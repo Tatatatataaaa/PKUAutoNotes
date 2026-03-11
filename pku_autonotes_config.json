@@ -6,6 +6,7 @@
   "page_url": null,
   "file_path": "downloads",
   "output_dir": "downloads",
+  "log_file": "logs/pku_autonotes.log",
   "auto_add_suffix": true,
   "overwrite": false,
   "list_only": false,

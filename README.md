@@ -33,6 +33,13 @@ Key config items:
 
 - `file_path`: download root folder path.
 - `auto_add_suffix`: whether to auto append filename extension when missing.
+- `log_file`: log file path. Set to blank in edit mode to disable file logging.
+
+Logging behavior:
+
+- Runtime logs are unified in format: `YYYY-MM-DD HH:MM:SS | LEVEL | message`.
+- Terminal output uses the same format.
+- If `log_file` is set, logs are also written to that file.
 
 The script will ask for all options interactively, including:
 
@@ -67,8 +74,14 @@ Download filename behavior:
 
 Course folder naming behavior:
 
-- Course folders are normalized to `课程名__course_id`.
-- Long course-code prefixes and semester suffixes are trimmed for cleaner names.
+- Course folders are now normalized to a concise format: `课程名_课程短ID`.
+- Course names are cleaned and truncated to keep paths short.
+
+Download history and duplicate avoidance:
+
+- Before downloading, the script checks local history and existing files to avoid duplicate downloads.
+- A local SQLite database is maintained at `<file_path>/.pku_autonotes_history.db`.
+- Download records are upserted by normalized source URL and local path.
 
 ## Download All Courses
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 from dataclasses import dataclass
@@ -10,6 +11,7 @@ from typing import Any
 
 from pku_auto_notes.downloader import (
     DEFAULT_APP_ID,
+    DEFAULT_HISTORY_DB_NAME,
     DEFAULT_REDIR_URL,
     PKUCourseDownloader,
 )
@@ -26,6 +28,7 @@ class RunConfig:
     mode: str
     page_url: str | None
     file_path: Path
+    log_file: Path | None
     auto_add_suffix: bool
     overwrite: bool
     list_only: bool
@@ -176,6 +179,7 @@ def _save_json_config(config: RunConfig) -> None:
         "page_url": config.page_url,
         "file_path": str(config.file_path),
         "output_dir": str(config.file_path),
+        "log_file": str(config.log_file) if config.log_file else None,
         "auto_add_suffix": config.auto_add_suffix,
         "overwrite": config.overwrite,
         "list_only": config.list_only,
@@ -196,6 +200,33 @@ def _save_json_config(config: RunConfig) -> None:
     )
 
 
+def _setup_logging(log_file: Path | None) -> logging.Logger:
+    logger = logging.getLogger("pkuautonotes")
+    logger.setLevel(logging.INFO)
+    logger.handlers.clear()
+    logger.propagate = False
+
+    formatter = logging.Formatter(
+        fmt="%(asctime)s | %(levelname)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    if log_file:
+        try:
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+            file_handler = logging.FileHandler(log_file, encoding="utf-8")
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+        except OSError as exc:
+            print(f"Warning: failed to initialize log file {log_file}: {exc}")
+
+    return logger
+
+
 def _build_default_run_config(saved: dict[str, Any]) -> RunConfig:
     username = os.getenv("PKU_USERNAME") or _saved_str(saved, "username", "") or ""
     remember_password = _saved_bool(saved, "remember_password", False)
@@ -212,6 +243,14 @@ def _build_default_run_config(saved: dict[str, Any]) -> RunConfig:
         mode = "all"
 
     output_raw = _saved_str(saved, "file_path", None) or _saved_str(saved, "output_dir", "downloads") or "downloads"
+    log_file_raw = saved.get("log_file", "logs/pku_autonotes.log")
+    log_file: Path | None
+    if isinstance(log_file_raw, str):
+        log_file = Path(log_file_raw) if log_file_raw.strip() else None
+    elif log_file_raw is None:
+        log_file = None
+    else:
+        log_file = Path("logs/pku_autonotes.log")
     page_url = _saved_str(saved, "page_url", None)
     max_pages = _saved_optional_int(saved, "max_pages_per_course", 120) or 120
     if max_pages < 1:
@@ -228,6 +267,7 @@ def _build_default_run_config(saved: dict[str, Any]) -> RunConfig:
         mode=mode,
         page_url=page_url,
         file_path=Path(output_raw),
+        log_file=log_file,
         auto_add_suffix=_saved_bool(saved, "auto_add_suffix", True),
         overwrite=_saved_bool(saved, "overwrite", False),
         list_only=_saved_bool(saved, "list_only", False),
@@ -273,6 +313,7 @@ def _print_config_summary(config: RunConfig) -> None:
     print(f"- mode: {_render_optional(config.mode)}")
     print(f"- page_url: {_render_optional(config.page_url)}")
     print(f"- file_path: {_render_optional(config.file_path)}")
+    print(f"- log_file: {_render_optional(config.log_file)}")
     print(f"- auto_add_suffix: {_render_optional(config.auto_add_suffix)}")
     print(f"- list_only: {_render_optional(config.list_only)}")
     print(f"- overwrite: {_render_optional(config.overwrite)}")
@@ -303,6 +344,13 @@ def _edit_run_config_interactively(config: RunConfig, saved: dict[str, Any]) -> 
     mode = _prompt_mode(default=config.mode)
     list_only = _prompt_bool("List only (no download)", default=config.list_only)
     file_path = Path(_prompt_text("File path (download root)", default=str(config.file_path), required=True))
+    log_file_default = str(config.log_file) if config.log_file else ""
+    log_file_raw = _prompt_text(
+        "Log file path (blank disables file log)",
+        default=log_file_default,
+        required=False,
+    )
+    log_file = Path(log_file_raw) if log_file_raw else None
     auto_add_suffix = _prompt_bool("Auto append filename suffix", default=config.auto_add_suffix)
     overwrite = _prompt_bool("Overwrite files with same name", default=config.overwrite)
     max_files = _prompt_optional_int("Max files per content page", default=config.max_files)
@@ -329,6 +377,7 @@ def _edit_run_config_interactively(config: RunConfig, saved: dict[str, Any]) -> 
         mode=mode,
         page_url=page_url,
         file_path=file_path,
+        log_file=log_file,
         auto_add_suffix=auto_add_suffix,
         overwrite=overwrite,
         list_only=list_only,
@@ -389,8 +438,26 @@ def main() -> int:
     except OSError as exc:
         print(f"Warning: failed to save config file {CONFIG_FILE_PATH.name}: {exc}")
 
-    client = PKUCourseDownloader(auto_add_suffix=config.auto_add_suffix)
-    print("Logging in via IAAA...")
+    logger = _setup_logging(config.log_file)
+    logger.info(
+        "Run started | mode=%s | list_only=%s | file_path=%s | auto_add_suffix=%s",
+        config.mode,
+        config.list_only,
+        config.file_path,
+        config.auto_add_suffix,
+    )
+    logger.info("Runtime | python=%s", sys.version.split()[0])
+    if config.log_file:
+        logger.info("File logging enabled: %s", config.log_file)
+
+    history_db_path = config.file_path / DEFAULT_HISTORY_DB_NAME
+    logger.info("Download history database: %s", history_db_path)
+
+    client = PKUCourseDownloader(
+        auto_add_suffix=config.auto_add_suffix,
+        history_db_path=history_db_path,
+    )
+    logger.info("Logging in via IAAA...")
     try:
         client.login(
             username=config.username,
@@ -399,17 +466,17 @@ def main() -> int:
             redir_url=config.redir_url,
         )
     except RuntimeError as exc:
-        print(f"Login failed: {exc}")
-        print("Tip: keep default appid/redirUrl unless you need a special setup.")
+        logger.error("Login failed: %s", exc)
+        logger.info("Tip: keep default appid/redirUrl unless you need a special setup.")
         return 1
 
-    print("Login successful.")
+    logger.info("Login successful.")
 
     if config.mode == "all":
         try:
             courses = client.discover_current_term_courses()
         except RuntimeError as exc:
-            print(f"Course discovery failed: {exc}")
+            logger.error("Course discovery failed: %s", exc)
             if not _prompt_bool("Switch to single content page mode now", default=True):
                 return 1
 
@@ -418,7 +485,7 @@ def main() -> int:
             try:
                 _save_json_config(config)
             except OSError as save_exc:
-                print(f"Warning: failed to save config file {CONFIG_FILE_PATH.name}: {save_exc}")
+                logger.warning("Failed to save config file %s: %s", CONFIG_FILE_PATH.name, save_exc)
             courses = []
 
         if config.mode == "all":
@@ -430,10 +497,10 @@ def main() -> int:
                 courses = courses[: max(config.max_courses, 0)]
 
             if config.list_only:
-                print(f"Found {len(courses)} current-term courses:")
+                logger.info("Found %s current-term courses:", len(courses))
                 for idx, course in enumerate(courses, start=1):
-                    print(f"[{idx}] {course.title} ({course.course_id})")
-                    print(f"    {course.entry_url}")
+                    logger.info("[%s] %s (%s)", idx, course.title, course.course_id)
+                    logger.info("    %s", course.entry_url)
                 return 0
 
             results = client.download_all_courses(
@@ -449,14 +516,18 @@ def main() -> int:
 
             total_downloaded = sum(len(item.downloaded) for item in results)
             total_skipped = sum(len(item.skipped) for item in results)
-            print(f"Processed courses: {len(results)}")
-            print(f"Total downloaded: {total_downloaded}")
-            print(f"Total skipped: {total_skipped}")
+            logger.info("Processed courses: %s", len(results))
+            logger.info("Total downloaded: %s", total_downloaded)
+            logger.info("Total skipped: %s", total_skipped)
 
             for item in results:
-                print(
-                    f"- {item.course.title} ({item.course.course_id}) | "
-                    f"pages={item.pages_scanned}, downloaded={len(item.downloaded)}, skipped={len(item.skipped)}"
+                logger.info(
+                    "- %s (%s) | pages=%s, downloaded=%s, skipped=%s",
+                    item.course.title,
+                    item.course.course_id,
+                    item.pages_scanned,
+                    len(item.downloaded),
+                    len(item.skipped),
                 )
 
             return 0
@@ -469,18 +540,18 @@ def main() -> int:
 
     if config.list_only:
         if coursewares:
-            print(f"Found {len(coursewares)} coursewares in teaching-content page:")
+            logger.info("Found %s coursewares in teaching-content page:", len(coursewares))
             for idx, item in enumerate(coursewares, start=1):
                 cid = item.content_id or "N/A"
-                print(f"[{idx}] {item.title} (content_id={cid})")
-                print(f"    {item.file_url}")
+                logger.info("[%s] %s (content_id=%s)", idx, item.title, cid)
+                logger.info("    %s", item.file_url)
             return 0
 
         targets = client.list_download_targets(config.page_url)
-        print(f"Found {len(targets)} downloadable links:")
+        logger.info("Found %s downloadable links:", len(targets))
         for idx, (url, title) in enumerate(targets, start=1):
-            print(f"[{idx}] {title}")
-            print(f"    {url}")
+            logger.info("[%s] %s", idx, title)
+            logger.info("    %s", url)
         return 0
 
     if coursewares:
@@ -498,13 +569,13 @@ def main() -> int:
             max_files=config.max_files,
         )
 
-    print(f"Downloaded: {len(summary.downloaded)}")
+    logger.info("Downloaded: %s", len(summary.downloaded))
     for item in summary.downloaded:
-        print(f"  - {item.local_path} ({item.size_bytes} bytes)")
+        logger.info("  - %s (%s bytes)", item.local_path, item.size_bytes)
 
-    print(f"Skipped: {len(summary.skipped)}")
+    logger.info("Skipped: %s", len(summary.skipped))
     for item in summary.skipped:
-        print(f"  - {item.source_url} | {item.reason}")
+        logger.info("  - %s | %s", item.source_url, item.reason)
 
     return 0
 

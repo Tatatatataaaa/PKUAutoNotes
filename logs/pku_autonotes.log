@@ -1,0 +1,71 @@
+2026-03-11 15:32:33 | INFO | Run started | mode=all | list_only=False | file_path=downloads | auto_add_suffix=True
+2026-03-11 15:32:33 | INFO | Runtime | python=3.10.18
+2026-03-11 15:32:33 | INFO | File logging enabled: logs/pku_autonotes.log
+2026-03-11 15:32:33 | INFO | Logging in via IAAA...
+2026-03-11 15:32:34 | INFO | Login successful.
+2026-03-11 15:32:48 | INFO | Processed courses: 9
+2026-03-11 15:32:48 | INFO | Total downloaded: 14
+2026-03-11 15:32:48 | INFO | Total skipped: 3
+2026-03-11 15:32:48 | INFO | - 25262-00023-02330001-110****623-00-3: 哲学导论 (_96216_1) | pages=0, downloaded=0, skipped=1
+2026-03-11 15:32:48 | INFO | - 25262-00023-02330003-110****623-00-3: 哲学导论 (_96218_1) | pages=0, downloaded=0, skipped=1
+2026-03-11 15:32:48 | INFO | - 25262-00025-02532600-240****366-00-1: 经济学原理 (_96425_1) | pages=1, downloaded=7, skipped=0
+2026-03-11 15:32:48 | INFO | - 25262-00048-04830100-000****271-00-1: 数字逻辑设计 (_98017_1) | pages=1, downloaded=0, skipped=0
+2026-03-11 15:32:48 | INFO | - 25262-00048-04830281-000****265-00-1: 算法设计与分析 (_98023_1) | pages=1, downloaded=3, skipped=0
+2026-03-11 15:32:48 | INFO | - 25262-00048-04832240-110****127-00-1: 并行与分布式计算导论 (_98093_1) | pages=1, downloaded=2, skipped=0
+2026-03-11 15:32:48 | INFO | - 25262-00048-04833970-170****187-00-1: 计算摄像学：成像模型理论与深度学习实践 (_98128_1) | pages=1, downloaded=0, skipped=1
+2026-03-11 15:32:48 | INFO | - 25262-00048-04834020-210****109-00-1: 具身智能导论 (_98131_1) | pages=1, downloaded=2, skipped=0
+2026-03-11 15:32:48 | INFO | - 25262-00048-04835120-110****246-00-1: 自然语言处理基础 (_98196_1) | pages=1, downloaded=0, skipped=0
+2026-03-11 15:45:14 | INFO | Run started | mode=all | list_only=False | file_path=downloads | auto_add_suffix=True
+2026-03-11 15:45:14 | INFO | Runtime | python=3.10.18
+2026-03-11 15:45:14 | INFO | File logging enabled: logs/pku_autonotes.log
+2026-03-11 15:45:14 | INFO | Download history database: downloads/.pku_autonotes_history.db
+2026-03-11 15:45:14 | INFO | Logging in via IAAA...
+2026-03-11 15:45:15 | INFO | Login successful.
+2026-03-11 15:45:29 | INFO | Processed courses: 9
+2026-03-11 15:45:29 | INFO | Total downloaded: 14
+2026-03-11 15:45:29 | INFO | Total skipped: 3
+2026-03-11 15:45:29 | INFO | - 25262-00023-02330001-110****623-00-3: 哲学导论 (_96216_1) | pages=0, downloaded=0, skipped=1
+2026-03-11 15:45:29 | INFO | - 25262-00023-02330003-110****623-00-3: 哲学导论 (_96218_1) | pages=0, downloaded=0, skipped=1
+2026-03-11 15:45:29 | INFO | - 25262-00025-02532600-240****366-00-1: 经济学原理 (_96425_1) | pages=1, downloaded=7, skipped=0
+2026-03-11 15:45:29 | INFO | - 25262-00048-04830100-000****271-00-1: 数字逻辑设计 (_98017_1) | pages=1, downloaded=0, skipped=0
+2026-03-11 15:45:29 | INFO | - 25262-00048-04830281-000****265-00-1: 算法设计与分析 (_98023_1) | pages=1, downloaded=3, skipped=0
+2026-03-11 15:45:29 | INFO | - 25262-00048-04832240-110****127-00-1: 并行与分布式计算导论 (_98093_1) | pages=1, downloaded=2, skipped=0
+2026-03-11 15:45:29 | INFO | - 25262-00048-04833970-170****187-00-1: 计算摄像学：成像模型理论与深度学习实践 (_98128_1) | pages=1, downloaded=0, skipped=1
+2026-03-11 15:45:29 | INFO | - 25262-00048-04834020-210****109-00-1: 具身智能导论 (_98131_1) | pages=1, downloaded=2, skipped=0
+2026-03-11 15:45:29 | INFO | - 25262-00048-04835120-110****246-00-1: 自然语言处理基础 (_98196_1) | pages=1, downloaded=0, skipped=0
+2026-03-11 15:50:52 | INFO | Run started | mode=all | list_only=False | file_path=downloads | auto_add_suffix=True
+2026-03-11 15:50:52 | INFO | Runtime | python=3.10.18
+2026-03-11 15:50:52 | INFO | File logging enabled: logs/pku_autonotes.log
+2026-03-11 15:50:52 | INFO | Download history database: downloads/.pku_autonotes_history.db
+2026-03-11 15:50:52 | INFO | Logging in via IAAA...
+2026-03-11 15:50:53 | INFO | Login successful.
+2026-03-11 15:51:06 | INFO | Processed courses: 9
+2026-03-11 15:51:06 | INFO | Total downloaded: 14
+2026-03-11 15:51:06 | INFO | Total skipped: 3
+2026-03-11 15:51:06 | INFO | - 25262-00023-02330001-110****623-00-3: 哲学导论 (_96216_1) | pages=0, downloaded=0, skipped=1
+2026-03-11 15:51:06 | INFO | - 25262-00023-02330003-110****623-00-3: 哲学导论 (_96218_1) | pages=0, downloaded=0, skipped=1
+2026-03-11 15:51:06 | INFO | - 25262-00025-02532600-240****366-00-1: 经济学原理 (_96425_1) | pages=1, downloaded=7, skipped=0
+2026-03-11 15:51:06 | INFO | - 25262-00048-04830100-000****271-00-1: 数字逻辑设计 (_98017_1) | pages=1, downloaded=0, skipped=0
+2026-03-11 15:51:06 | INFO | - 25262-00048-04830281-000****265-00-1: 算法设计与分析 (_98023_1) | pages=1, downloaded=3, skipped=0
+2026-03-11 15:51:06 | INFO | - 25262-00048-04832240-110****127-00-1: 并行与分布式计算导论 (_98093_1) | pages=1, downloaded=2, skipped=0
+2026-03-11 15:51:06 | INFO | - 25262-00048-04833970-170****187-00-1: 计算摄像学：成像模型理论与深度学习实践 (_98128_1) | pages=1, downloaded=0, skipped=1
+2026-03-11 15:51:06 | INFO | - 25262-00048-04834020-210****109-00-1: 具身智能导论 (_98131_1) | pages=1, downloaded=2, skipped=0
+2026-03-11 15:51:06 | INFO | - 25262-00048-04835120-110****246-00-1: 自然语言处理基础 (_98196_1) | pages=1, downloaded=0, skipped=0
+2026-03-11 15:59:07 | INFO | Run started | mode=all | list_only=False | file_path=downloads | auto_add_suffix=True
+2026-03-11 15:59:07 | INFO | Runtime | python=3.10.18
+2026-03-11 15:59:07 | INFO | File logging enabled: logs/pku_autonotes.log
+2026-03-11 15:59:07 | INFO | Download history database: downloads/.pku_autonotes_history.db
+2026-03-11 15:59:07 | INFO | Logging in via IAAA...
+2026-03-11 15:59:08 | INFO | Login successful.
+2026-03-11 15:59:15 | INFO | Processed courses: 9
+2026-03-11 15:59:15 | INFO | Total downloaded: 0
+2026-03-11 15:59:15 | INFO | Total skipped: 17
+2026-03-11 15:59:15 | INFO | - 具身智能导论 (_98131_1) | pages=1, downloaded=0, skipped=2
+2026-03-11 15:59:15 | INFO | - 哲学导论 (_96216_1) | pages=0, downloaded=0, skipped=1
+2026-03-11 15:59:15 | INFO | - 哲学导论 (_96218_1) | pages=0, downloaded=0, skipped=1
+2026-03-11 15:59:15 | INFO | - 并行与分布式计算导论 (_98093_1) | pages=1, downloaded=0, skipped=2
+2026-03-11 15:59:15 | INFO | - 数字逻辑设计 (_98017_1) | pages=1, downloaded=0, skipped=0
+2026-03-11 15:59:15 | INFO | - 算法设计与分析 (_98023_1) | pages=1, downloaded=0, skipped=3
+2026-03-11 15:59:15 | INFO | - 经济学原理 (_96425_1) | pages=1, downloaded=0, skipped=7
+2026-03-11 15:59:15 | INFO | - 自然语言处理基础 (_98196_1) | pages=1, downloaded=0, skipped=0
+2026-03-11 15:59:15 | INFO | - 计算摄像学：成像模型理论与深度学习实践 (_98128_1) | pages=1, downloaded=0, skipped=1

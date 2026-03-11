@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import deque
 import mimetypes
 import re
+import sqlite3
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,6 +35,7 @@ DEFAULT_COURSE_TAB_URLS = (
 IAAA_LOGIN_URL = "https://iaaa.pku.edu.cn/iaaa/oauthlogin.do"
 DEFAULT_TIMEOUT = 30
 DEFAULT_LOGIN_RETRY_ATTEMPTS = 4
+DEFAULT_HISTORY_DB_NAME = ".pku_autonotes_history.db"
 
 
 @dataclass
@@ -78,10 +80,21 @@ class CourseDownloadSummary:
     skipped: list[SkippedFile]
 
 
+class AlreadyDownloadedError(RuntimeError):
+    pass
+
+
 class PKUCourseDownloader:
-    def __init__(self, timeout: int = DEFAULT_TIMEOUT, auto_add_suffix: bool = True) -> None:
+    def __init__(
+        self,
+        timeout: int = DEFAULT_TIMEOUT,
+        auto_add_suffix: bool = True,
+        history_db_path: Path | None = None,
+    ) -> None:
         self.timeout = timeout
         self.auto_add_suffix = auto_add_suffix
+        self.history_db_path = history_db_path
+        self._history_conn: sqlite3.Connection | None = None
         self.session = requests.Session()
         self.session.headers.update(
             {
@@ -92,6 +105,35 @@ class PKUCourseDownloader:
                 )
             }
         )
+        self._init_history_db()
+
+    def _init_history_db(self) -> None:
+        if self.history_db_path is None:
+            return
+
+        self.history_db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._history_conn = sqlite3.connect(self.history_db_path)
+        self._history_conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS download_history (
+                normalized_url TEXT PRIMARY KEY,
+                source_url TEXT NOT NULL,
+                local_path TEXT NOT NULL,
+                size_bytes INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'downloaded',
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        self._history_conn.commit()
+
+    def close(self) -> None:
+        if self._history_conn is not None:
+            self._history_conn.close()
+            self._history_conn = None
+
+    def __del__(self) -> None:
+        self.close()
 
     def login(
         self,
@@ -209,6 +251,48 @@ class PKUCourseDownloader:
         assert last_exc is not None
         raise last_exc
 
+    def _get_history_path(self, normalized_url: str) -> Path | None:
+        if self._history_conn is None:
+            return None
+
+        row = self._history_conn.execute(
+            "SELECT local_path FROM download_history WHERE normalized_url = ?",
+            (normalized_url,),
+        ).fetchone()
+        if row is None:
+            return None
+
+        candidate = Path(row[0])
+        if candidate.exists():
+            return candidate
+        return None
+
+    def _upsert_history(
+        self,
+        normalized_url: str,
+        source_url: str,
+        local_path: Path,
+        size_bytes: int,
+        status: str,
+    ) -> None:
+        if self._history_conn is None:
+            return
+
+        self._history_conn.execute(
+            """
+            INSERT INTO download_history (normalized_url, source_url, local_path, size_bytes, status, updated_at)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(normalized_url) DO UPDATE SET
+                source_url = excluded.source_url,
+                local_path = excluded.local_path,
+                size_bytes = excluded.size_bytes,
+                status = excluded.status,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (normalized_url, source_url, str(local_path), int(size_bytes), status),
+        )
+        self._history_conn.commit()
+
     def list_download_targets(self, page_url: str) -> list[tuple[str, str]]:
         html = self._fetch_page(page_url)
         return list(_parse_download_targets(html, page_url))
@@ -270,6 +354,9 @@ class PKUCourseDownloader:
 
                 try:
                     attempt = self._download_one(candidate, item.title, output_dir, overwrite, page_url)
+                except AlreadyDownloadedError as exc:
+                    last_reason = str(exc)
+                    break
                 except requests.RequestException as exc:
                     last_reason = f"request error: {exc}"
                     continue
@@ -408,8 +495,7 @@ class PKUCourseDownloader:
         max_files_per_page: int | None = None,
         teaching_content_only: bool = True,
     ) -> CourseDownloadSummary:
-        clean_title = _clean_course_title(course.title) or course.course_id
-        course_dir_name = _sanitize_filename(f"{clean_title}__{course.course_id}")
+        course_dir_name = _build_concise_course_dir_name(course.title, course.course_id)
         course_dir = output_root / course_dir_name
         course_dir.mkdir(parents=True, exist_ok=True)
 
@@ -459,6 +545,9 @@ class PKUCourseDownloader:
 
                 try:
                     result = self._download_one(source_url, title, course_dir, overwrite, page_url)
+                except AlreadyDownloadedError as exc:
+                    skipped.append(SkippedFile(source_url=source_url, reason=str(exc)))
+                    continue
                 except requests.RequestException as exc:
                     skipped.append(SkippedFile(source_url=source_url, reason=f"request error: {exc}"))
                     continue
@@ -531,6 +620,9 @@ class PKUCourseDownloader:
         for source_url, title in targets:
             try:
                 result = self._download_one(source_url, title, output_dir, overwrite, page_url)
+            except AlreadyDownloadedError as exc:
+                skipped.append(SkippedFile(source_url=source_url, reason=str(exc)))
+                continue
             except requests.RequestException as exc:
                 skipped.append(SkippedFile(source_url=source_url, reason=f"request error: {exc}"))
                 continue
@@ -558,6 +650,11 @@ class PKUCourseDownloader:
         overwrite: bool,
         referer: str,
     ) -> DownloadedFile | None:
+        normalized_source = _normalize_url(source_url)
+        history_path = self._get_history_path(normalized_source)
+        if history_path is not None and not overwrite:
+            raise AlreadyDownloadedError(f"already downloaded: {history_path}")
+
         resp = self.session.get(
             source_url,
             stream=True,
@@ -586,7 +683,18 @@ class PKUCourseDownloader:
                 content_type=content_type,
             )
 
-        final_path = _dedupe_path(output_dir / _sanitize_filename(filename), overwrite)
+        final_path = output_dir / _sanitize_filename(filename)
+        if final_path.exists() and not overwrite:
+            self._upsert_history(
+                normalized_url=normalized_source,
+                source_url=source_url,
+                local_path=final_path,
+                size_bytes=final_path.stat().st_size,
+                status="existing",
+            )
+            raise AlreadyDownloadedError(f"already exists locally: {final_path}")
+
+        final_path = _dedupe_path(final_path, overwrite)
         size_bytes = 0
         with final_path.open("wb") as file_obj:
             for chunk in resp.iter_content(chunk_size=1024 * 64):
@@ -594,6 +702,14 @@ class PKUCourseDownloader:
                     continue
                 file_obj.write(chunk)
                 size_bytes += len(chunk)
+
+        self._upsert_history(
+            normalized_url=normalized_source,
+            source_url=source_url,
+            local_path=final_path,
+            size_bytes=size_bytes,
+            status="downloaded",
+        )
 
         return DownloadedFile(source_url=source_url, local_path=final_path, size_bytes=size_bytes)
 
@@ -1047,16 +1163,37 @@ def _build_course_entry_url(course_id: str) -> str:
     return f"{DEFAULT_BASE_URL}/webapps/blackboard/execute/courseMain?course_id={course_id}"
 
 
+def _build_concise_course_dir_name(title: str, course_id: str) -> str:
+    clean_title = _clean_course_title(title) or course_id
+    clean_title = re.sub(r"\s+", " ", clean_title).strip()
+    max_title_len = 22
+    if len(clean_title) > max_title_len:
+        clean_title = clean_title[:max_title_len].rstrip()
+
+    short_course_id = course_id.strip("_").split("_")[0] if course_id else "course"
+    return _sanitize_filename(f"{clean_title}_{short_course_id}")
+
+
 def _clean_course_title(raw_title: str) -> str:
     text = re.sub(r"\s+", " ", raw_title).strip()
     text = re.sub(r"^(课程|Course)\s*[:：-]?\s*", "", text, flags=re.IGNORECASE)
 
-    # PKU Blackboard often prefixes course names with long numeric course codes.
-    prefixed = re.match(r"^[0-9A-Za-z-]{6,}(?:_[0-9A-Za-z-]+)*_\s*(.+)$", text)
-    if prefixed:
-        text = prefixed.group(1).strip()
+    # PKU Blackboard may prefix course title with one or multiple coded segments.
+    # Handles both "..._ 哲学导论" and "..._哲学导论" styles.
+    coded_prefix = re.match(r"^(?:[0-9A-Za-z-]+_+)+(.+)$", text)
+    if coded_prefix:
+        text = coded_prefix.group(1).strip()
+
+    # Additional cleanup for residual coded fragment like "265-00-1_哲学导论".
+    text = re.sub(r"^[0-9A-Za-z-]{3,}_+\s*", "", text)
+
+    # If Chinese title exists, prefer content starting from first Chinese character.
+    first_cjk = re.search(r"[\u4e00-\u9fff]", text)
+    if first_cjk:
+        text = text[first_cjk.start():].strip()
 
     text = re.sub(r"\([^)]*学期[^)]*\)$", "", text).strip()
+    text = re.sub(r"（[^）]*学期[^）]*）$", "", text).strip()
     return text
 
 
