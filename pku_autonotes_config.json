@@ -1,0 +1,19 @@
+{
+  "username": "2300013408",
+  "appid": "blackboard",
+  "redir_url": "http://course.pku.edu.cn/webapps/bb-sso-BBLEARN/execute/authValidate/campusLogin",
+  "mode": "all",
+  "page_url": null,
+  "file_path": "downloads",
+  "output_dir": "downloads",
+  "auto_add_suffix": true,
+  "overwrite": false,
+  "list_only": false,
+  "max_files": null,
+  "max_courses": null,
+  "max_pages_per_course": 120,
+  "course_keyword": null,
+  "use_custom_sso": false,
+  "remember_password": true,
+  "password": "Inter212215"
+}
